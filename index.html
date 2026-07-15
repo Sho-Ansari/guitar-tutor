@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FretFlow — Guitar Tutor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎸</text></svg>" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">◍</span>
+      <h1>FretFlow</h1>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="chords">Chords</button>
+      <button class="tab" data-tab="exercises">Exercises</button>
+      <button class="tab" data-tab="tuner">Tuner</button>
+      <button class="tab" data-tab="songs">Songs</button>
+    </nav>
+    <button id="settings-btn" class="icon-btn" title="AI settings">⚙</button>
+  </header>
+
+  <main>
+    <!-- The guitar: always visible so users can mimic it -->
+    <section id="stage">
+      <div id="fretboard-wrap"></div>
+      <div id="stage-caption" class="stage-caption">Pick a chord, exercise, or song below — the strings light up to show you what to play.</div>
+    </section>
+
+    <!-- CHORDS -->
+    <section class="panel active" id="panel-chords">
+      <div class="panel-head">
+        <h2>Chord library</h2>
+        <p class="muted">Tap a chord to see where your fingers go. Numbers = fingers (1 index · 2 middle · 3 ring · 4 pinky). <b>O</b> = open string, <b>×</b> = don't play.</p>
+      </div>
+      <div id="chord-grid" class="chip-grid"></div>
+      <div id="chord-detail" class="detail-card hidden">
+        <div class="detail-info">
+          <h3 id="chord-name"></h3>
+          <p id="chord-desc" class="muted"></p>
+        </div>
+        <button id="chord-strum" class="btn accent">▶ Strum it</button>
+      </div>
+    </section>
+
+    <!-- EXERCISES -->
+    <section class="panel" id="panel-exercises">
+      <div class="panel-head">
+        <h2>Beginner exercises</h2>
+        <p class="muted">Follow the lit string and finger number. Start slow — speed comes later.</p>
+      </div>
+      <div id="exercise-list" class="card-grid"></div>
+      <div id="exercise-player" class="player hidden">
+        <div class="player-head">
+          <h3 id="ex-title"></h3>
+          <button id="ex-close" class="icon-btn">✕</button>
+        </div>
+        <div class="player-display">
+          <div class="big-step" id="ex-step-label">—</div>
+          <div class="muted" id="ex-step-detail"></div>
+        </div>
+        <div class="player-controls">
+          <button id="ex-prev" class="btn">⏮</button>
+          <button id="ex-play" class="btn accent">▶ Play</button>
+          <button id="ex-next" class="btn">⏭</button>
+          <label class="tempo-ctl">Tempo <input type="range" id="ex-tempo" min="30" max="140" value="60" /> <span id="ex-tempo-val">60</span> bpm</label>
+        </div>
+        <div class="progress"><div id="ex-progress" class="progress-fill"></div></div>
+      </div>
+    </section>
+
+    <!-- TUNER -->
+    <section class="panel" id="panel-tuner">
+      <div class="panel-head">
+        <h2>Tuner</h2>
+        <p class="muted">Standard tuning · E A D G B e. Pluck one string at a time — the matching string lights up on the guitar above.</p>
+      </div>
+      <div class="tuner-box">
+        <button id="tuner-toggle" class="btn accent big">🎤 Start tuning</button>
+        <div id="tuner-display" class="hidden">
+          <div id="tuner-note" class="tuner-note">—</div>
+          <div id="tuner-target" class="muted">play a string</div>
+          <div class="meter">
+            <div class="meter-scale"><span>♭ flat</span><span>in tune</span><span>sharp ♯</span></div>
+            <div class="meter-track">
+              <div class="meter-center"></div>
+              <div id="meter-needle" class="meter-needle"></div>
+            </div>
+            <div id="tuner-cents" class="muted small">0¢</div>
+          </div>
+          <div id="tuner-hint" class="tuner-hint"></div>
+        </div>
+        <p id="tuner-error" class="error hidden"></p>
+      </div>
+    </section>
+
+    <!-- SONGS -->
+    <section class="panel" id="panel-songs">
+      <div class="panel-head">
+        <h2>Song library</h2>
+        <p class="muted">Pick a song and follow along — the guitar shows each chord and the strings pulse with the strumming pattern.</p>
+        <button id="ai-request-btn" class="btn accent">✨ Request a song with AI</button>
+      </div>
+      <div id="song-list" class="card-grid"></div>
+      <div id="song-player" class="player hidden">
+        <div class="player-head">
+          <h3 id="song-title"></h3>
+          <button id="song-close" class="icon-btn">✕</button>
+        </div>
+        <div class="song-now">
+          <div class="song-chord-now">
+            <span class="muted small">now</span>
+            <div id="song-chord" class="big-step">—</div>
+          </div>
+          <div class="song-chord-next">
+            <span class="muted small">next</span>
+            <div id="song-next" class="mid-step">—</div>
+          </div>
+          <div class="song-meta">
+            <div id="song-section" class="muted"></div>
+            <div class="strum-row" id="strum-row"></div>
+            <div class="beat-row" id="beat-row"></div>
+          </div>
+        </div>
+        <div class="player-controls">
+          <button id="song-play" class="btn accent">▶ Play</button>
+          <label class="tempo-ctl">Tempo <input type="range" id="song-tempo" min="40" max="160" value="80" /> <span id="song-tempo-val">80</span> bpm</label>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- AI song request modal -->
+  <div id="ai-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head"><h3>✨ Request a song</h3><button class="icon-btn modal-close">✕</button></div>
+      <p class="muted">Claude will figure out the chords, strumming pattern, and any chord shapes you don't know yet, then add the song to your library.</p>
+      <input id="ai-song-input" type="text" placeholder='e.g. "Wonderwall by Oasis" or "a simple 3-chord campfire song"' />
+      <button id="ai-submit" class="btn accent">Get chords &amp; strumming</button>
+      <div id="ai-status" class="muted small"></div>
+    </div>
+  </div>
+
+  <!-- API key modal -->
+  <div id="key-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head"><h3>AI settings</h3><button class="icon-btn modal-close">✕</button></div>
+      <p class="muted">Paste your Anthropic API key to enable AI song requests. It's stored only in this browser (localStorage) and sent only to api.anthropic.com.</p>
+      <input id="api-key-input" type="password" placeholder="sk-ant-..." />
+      <div class="row">
+        <button id="key-save" class="btn accent">Save</button>
+        <button id="key-clear" class="btn">Clear</button>
+      </div>
+      <div id="key-status" class="muted small"></div>
+    </div>
+  </div>
+
+  <script src="js/chords.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/fretboard.js"></script>
+  <script src="js/tuner.js"></script>
+  <script src="js/exercises.js"></script>
+  <script src="js/songs.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
