@@ -26,6 +26,7 @@
       exPlayer.pause();
       songPlayer.stop();
       trainer.stop();
+      stopEar();
       if (tab.dataset.tab !== "tuner" && tuner.running) stopTuner();
       fb.reset();
       caption.textContent = "";
@@ -147,10 +148,19 @@
     trainer.tap();
   });
 
-  $("#ex-play").addEventListener("click", () => (exPlayer.playing ? exPlayer.pause() : exPlayer.play()));
+  $("#ex-play").addEventListener("click", () => {
+    if (earMode === "exercise") { stopEar(); $("#ex-heard").textContent = ""; }
+    exPlayer.playing ? exPlayer.pause() : exPlayer.play();
+  });
   $("#ex-next").addEventListener("click", () => exPlayer.next());
   $("#ex-prev").addEventListener("click", () => exPlayer.prev());
-  $("#ex-close").addEventListener("click", () => { exPlayer.stop(); $("#exercise-player").classList.add("hidden"); fb.reset(); });
+  $("#ex-close").addEventListener("click", () => {
+    stopEar();
+    $("#ex-heard").textContent = "";
+    exPlayer.stop();
+    $("#exercise-player").classList.add("hidden");
+    fb.reset();
+  });
   $("#ex-tempo").addEventListener("input", (e) => {
     exPlayer.setTempo(+e.target.value);
     $("#ex-tempo-val").textContent = e.target.value;
@@ -237,12 +247,151 @@
 
   $("#tuner-toggle").addEventListener("click", async () => {
     if (tuner.running) { stopTuner(); return; }
+    stopEar(); // only one mic consumer at a time
     $("#tuner-error").classList.add("hidden");
     const ok = await tuner.start();
     if (ok) {
       $("#tuner-toggle").textContent = "⏹ Stop tuner";
       $("#tuner-display").classList.remove("hidden");
       caption.textContent = "Pluck one string at a time — it lights amber while off, green when in tune.";
+    }
+  });
+
+  /* ── live listening (mic) for chords + exercises ── */
+  let earMode = null; // null | "chord" | "exercise"
+  let earStreak = 0;
+  let earHoldUntil = 0;
+
+  const ear = new window.Ear({
+    onFrame: (f) => {
+      if (earMode === "chord") chordFrame(f);
+      else if (earMode === "exercise") exerciseFrame(f);
+    },
+    onError: (err) => {
+      const msg = err.name === "NotAllowedError"
+        ? "Microphone blocked — allow it in your browser's site settings."
+        : `Mic error: ${err.message}`;
+      if (earMode === "chord") $("#chord-verdict").textContent = msg;
+      if (earMode === "exercise") $("#ex-heard").textContent = msg;
+      stopEar();
+    },
+  });
+
+  async function startEar(mode) {
+    stopEar();
+    if (tuner.running) stopTuner();
+    earMode = mode;
+    earStreak = 0;
+    earHoldUntil = 0;
+    const ok = await ear.start();
+    if (!ok) { earMode = null; return false; }
+    return true;
+  }
+
+  function stopEar() {
+    if (ear.running) ear.stop();
+    earMode = null;
+    $("#chord-listen").classList.remove("listen-on");
+    $("#ex-listen").classList.remove("listen-on");
+    exPlayer.silent = false;
+  }
+
+  /* Chords tab: does the strum sound like the selected chord? */
+  function chordFrame({ rms, chroma }) {
+    if (!currentChord) return;
+    const out = $("#chord-verdict");
+    const now = performance.now();
+    if (now < earHoldUntil) return;
+    if (rms < 0.015) {
+      out.textContent = "🎤 listening — strum the chord…";
+      out.classList.remove("good");
+      earStreak = 0;
+      return;
+    }
+    const v = window.Ear.verdict(chroma, currentChord.name);
+    if (v.match) {
+      if (++earStreak >= 8) {
+        out.textContent = `✓ that sounds like ${currentChord.name}!`;
+        out.classList.add("good");
+        fb.lightChord(currentChord, "D", 600);
+        earStreak = 0;
+        earHoldUntil = now + 1200; // let the confirmation breathe
+      }
+    } else {
+      earStreak = 0;
+      out.classList.remove("good");
+      out.textContent = v.best && v.best.cov > 0.45
+        ? `hearing something closer to ${v.best.name} — check each finger and strum again`
+        : "…can't tell yet — strum all the strings evenly";
+    }
+  }
+
+  /* Exercises: play the shown note (or chord) to advance */
+  function exerciseFrame({ rms, freq, chroma }) {
+    const out = $("#ex-heard");
+    const step = exPlayer.exercise && exPlayer.exercise.steps[exPlayer.index];
+    if (!step) return;
+    const now = performance.now();
+    if (now < earHoldUntil) return;
+
+    if (step.type === "chord") {
+      if (rms < 0.015) { out.textContent = `🎤 strum ${step.chord} to advance…`; earStreak = 0; return; }
+      const v = window.Ear.verdict(chroma, step.chord);
+      if (v.match) {
+        if (++earStreak >= 8) advanceListen();
+      } else {
+        earStreak = 0;
+        out.textContent = v.best && v.best.cov > 0.45 ? `hearing ${v.best.name}…` : "listening…";
+      }
+      return;
+    }
+
+    // single note
+    if (freq <= 0 || rms < 0.012) { out.textContent = "🎤 pluck the lit string to advance…"; earStreak = 0; return; }
+    const expMidi = window.Ear.OPEN_MIDI[step.string] + step.fret;
+    const expFreq = 440 * Math.pow(2, (expMidi - 69) / 12);
+    const cents = 1200 * Math.log2(freq / expFreq);
+    if (Math.abs(cents) < 40) {
+      if (++earStreak >= 4) advanceListen();
+    } else {
+      earStreak = 0;
+      const heardMidi = Math.round(69 + 12 * Math.log2(freq / 440));
+      out.textContent = `heard ${window.Ear.noteName(heardMidi)} — aim for ${window.Ear.noteName(expMidi)}`;
+    }
+  }
+
+  function advanceListen() {
+    earStreak = 0;
+    earHoldUntil = performance.now() + 700; // ignore the ring-out of the note just played
+    const step = exPlayer.exercise.steps[exPlayer.index];
+    if (step.type === "note") fb.lightString(step.string, 500);
+    else fb.lightChord(window.getChord(step.chord), "D", 500);
+    const out = $("#ex-heard");
+    out.textContent = "✓ got it — next…";
+    out.classList.add("good");
+    setTimeout(() => {
+      if (earMode !== "exercise") return;
+      out.classList.remove("good");
+      exPlayer.next();
+    }, 450);
+  }
+
+  $("#chord-listen").addEventListener("click", async () => {
+    if (earMode === "chord") { stopEar(); $("#chord-verdict").textContent = ""; return; }
+    if (!currentChord) return;
+    if (await startEar("chord")) {
+      $("#chord-listen").classList.add("listen-on");
+      $("#chord-verdict").textContent = "🎤 listening — strum the chord…";
+    }
+  });
+
+  $("#ex-listen").addEventListener("click", async () => {
+    if (earMode === "exercise") { stopEar(); $("#ex-heard").textContent = ""; return; }
+    exPlayer.pause();
+    if (await startEar("exercise")) {
+      $("#ex-listen").classList.add("listen-on");
+      exPlayer.silent = true;
+      $("#ex-heard").textContent = "🎤 play the shown note to advance";
     }
   });
 

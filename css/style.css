@@ -156,6 +156,12 @@ input[type="range"] { accent-color: var(--accent); }
 #tr-tap:not(:disabled) { border-color: var(--lit); color: var(--lit); }
 #tr-tap:not(:disabled):active { background: rgba(126, 224, 138, 0.15); transform: scale(0.98); }
 
+/* ── live listening ── */
+.detail-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.listen-line { min-height: 1.3rem; font-size: 0.9rem; color: var(--muted); width: 100%; }
+.listen-line.good { color: var(--lit); }
+.btn.listen-on { border-color: var(--lit); color: var(--lit); }
+
 /* lefty toggle state */
 #lefty-btn.on { color: var(--accent); border-color: var(--accent); }
 

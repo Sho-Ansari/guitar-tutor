@@ -76,6 +76,7 @@
       this.playing = false;
       this.timer = null;
       this.tempo = 60;
+      this.silent = false; // true while mic listen-mode is on (avoid hearing our own synth)
     }
 
     load(exercise) {
@@ -96,13 +97,13 @@
           step.fret === 0
             ? `open ${window.STRING_NAMES[step.string]} string`
             : `${window.STRING_NAMES[step.string]} string · fret ${step.fret} · finger ${step.finger}`;
-        window.GuitarAudio.pluck(step.string, step.fret);
+        if (!this.silent) window.GuitarAudio.pluck(step.string, step.fret);
       } else {
         const chord = window.getChord(step.chord);
         this.fb.showChord(chord, { light: true });
         this.ui.stepLabel.textContent = step.chord;
         this.ui.stepDetail.textContent = `hold for ${step.beats} beats`;
-        window.GuitarAudio.strum(chord, "D");
+        if (!this.silent) window.GuitarAudio.strum(chord, "D");
       }
       this.ui.progress.style.width = `${((this.index + 1) / this.exercise.steps.length) * 100}%`;
     }

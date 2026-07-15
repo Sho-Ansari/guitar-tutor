@@ -46,7 +46,11 @@
           <h3 id="chord-name"></h3>
           <p id="chord-desc" class="muted"></p>
         </div>
-        <button id="chord-strum" class="btn accent">▶ Strum it</button>
+        <div class="detail-actions">
+          <button id="chord-strum" class="btn accent">▶ Strum it</button>
+          <button id="chord-listen" class="btn">🎤 Check my strum</button>
+        </div>
+        <div id="chord-verdict" class="listen-line"></div>
       </div>
     </section>
 
@@ -83,11 +87,13 @@
         <div class="player-display">
           <div class="big-step" id="ex-step-label">—</div>
           <div class="muted" id="ex-step-detail"></div>
+          <div id="ex-heard" class="listen-line"></div>
         </div>
         <div class="player-controls">
           <button id="ex-prev" class="btn">⏮</button>
           <button id="ex-play" class="btn accent">▶ Play</button>
           <button id="ex-next" class="btn">⏭</button>
+          <button id="ex-listen" class="btn">🎤 Listen</button>
           <label class="tempo-ctl">Tempo <input type="range" id="ex-tempo" min="30" max="140" value="60" /> <span id="ex-tempo-val">60</span> bpm</label>
         </div>
         <div class="progress"><div id="ex-progress" class="progress-fill"></div></div>
@@ -192,6 +198,7 @@
   <script src="js/audio.js"></script>
   <script src="js/fretboard.js"></script>
   <script src="js/tuner.js"></script>
+  <script src="js/ear.js"></script>
   <script src="js/exercises.js"></script>
   <script src="js/trainer.js"></script>
   <script src="js/songs.js"></script>
