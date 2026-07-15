@@ -85,7 +85,7 @@
       exPlayer.load(ex);
       exPlayer._show();
       caption.textContent = "Follow the lit string — the dot shows which finger goes where.";
-      $("#exercise-player").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      window.scrollTo({ top: 0, behavior: "smooth" }); // player now lives under the guitar
     });
     exList.appendChild(card);
   });
@@ -112,7 +112,7 @@
     renderPairChips();
     trainer.setPair(trainer.pair);
     caption.textContent = "Land the chord cleanly, tap, switch. Speed comes from repetition.";
-    $("#trainer-player").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    window.scrollTo({ top: 0, behavior: "smooth" }); // player now lives under the guitar
   });
   exList.prepend(trainerCard);
 
@@ -276,7 +276,7 @@
     $("#song-tempo-val").textContent = song.tempo;
     songPlayer.load(song);
     caption.textContent = "The strings pulse with each strum — ↓ down, ↑ up. Mimic what you see.";
-    $("#song-player").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    window.scrollTo({ top: 0, behavior: "smooth" }); // player now lives under the guitar
   }
 
   $("#song-play").addEventListener("click", () => {

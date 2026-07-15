@@ -52,12 +52,7 @@
 
     <!-- EXERCISES -->
     <section class="panel" id="panel-exercises">
-      <div class="panel-head">
-        <h2>Beginner exercises</h2>
-        <p class="muted">Follow the lit string and finger number. Start slow — speed comes later.</p>
-      </div>
-      <div id="exercise-list" class="card-grid"></div>
-
+      <!-- players sit directly under the guitar; the exercise cards live below -->
       <!-- 1-minute chord-change trainer -->
       <div id="trainer-player" class="player hidden">
         <div class="player-head">
@@ -97,6 +92,12 @@
         </div>
         <div class="progress"><div id="ex-progress" class="progress-fill"></div></div>
       </div>
+
+      <div class="panel-head">
+        <h2>Beginner exercises</h2>
+        <p class="muted">Follow the lit string and finger number. Start slow — speed comes later.</p>
+      </div>
+      <div id="exercise-list" class="card-grid"></div>
     </section>
 
     <!-- TUNER -->
@@ -127,12 +128,6 @@
 
     <!-- SONGS -->
     <section class="panel" id="panel-songs">
-      <div class="panel-head">
-        <h2>Song library</h2>
-        <p class="muted">Pick a song and follow along — the guitar shows each chord and the strings pulse with the strumming pattern.</p>
-        <button id="ai-request-btn" class="btn accent">✨ Request a song with AI</button>
-      </div>
-      <div id="song-list" class="card-grid"></div>
       <div id="song-player" class="player hidden">
         <div class="player-head">
           <h3 id="song-title"></h3>
@@ -158,6 +153,13 @@
           <label class="tempo-ctl">Tempo <input type="range" id="song-tempo" min="40" max="160" value="80" /> <span id="song-tempo-val">80</span> bpm</label>
         </div>
       </div>
+
+      <div class="panel-head">
+        <h2>Song library</h2>
+        <p class="muted">Pick a song and follow along — the guitar shows each chord and the strings pulse with the strumming pattern.</p>
+        <button id="ai-request-btn" class="btn accent">✨ Request a song with AI</button>
+      </div>
+      <div id="song-list" class="card-grid"></div>
     </section>
   </main>
 
