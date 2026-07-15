@@ -1,8 +1,20 @@
 /* App wiring: tabs, chord library, exercises, tuner, songs, AI modals. */
 (() => {
   const $ = (sel) => document.querySelector(sel);
-  const fb = new window.Fretboard($("#fretboard-wrap"));
+  const fb = new window.Fretboard($("#fretboard-wrap"), {
+    lefty: localStorage.getItem("fretflow.lefty") === "1",
+  });
   const caption = $("#stage-caption");
+
+  /* ── left-handed mode ── */
+  const leftyBtn = $("#lefty-btn");
+  leftyBtn.classList.toggle("on", fb.lefty);
+  leftyBtn.addEventListener("click", () => {
+    fb.setLefty(!fb.lefty);
+    leftyBtn.classList.toggle("on", fb.lefty);
+    localStorage.setItem("fretflow.lefty", fb.lefty ? "1" : "0");
+    caption.textContent = fb.lefty ? "Left-handed mode — the nut is now on the right." : "Back to right-handed mode.";
+  });
 
   /* ── tabs ── */
   document.querySelectorAll(".tab").forEach((tab) => {
@@ -13,6 +25,7 @@
       $(`#panel-${tab.dataset.tab}`).classList.add("active");
       exPlayer.pause();
       songPlayer.stop();
+      trainer.stop();
       if (tab.dataset.tab !== "tuner" && tuner.running) stopTuner();
       fb.reset();
       caption.textContent = "";
@@ -63,6 +76,8 @@
     card.className = "card";
     card.innerHTML = `<h3>${ex.title}</h3><p>${ex.desc}</p><span class="tag">${ex.tag}</span>`;
     card.addEventListener("click", () => {
+      trainer.stop();
+      $("#trainer-player").classList.add("hidden");
       $("#exercise-player").classList.remove("hidden");
       $("#ex-title").textContent = ex.title;
       $("#ex-tempo").value = ex.tempo;
@@ -73,6 +88,63 @@
       $("#exercise-player").scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
     exList.appendChild(card);
+  });
+
+  /* ── chord-change trainer ── */
+  const trainer = new window.ChangeTrainer(fb, {
+    chord: $("#tr-chord"),
+    info: $("#tr-info"),
+    time: $("#tr-time"),
+    count: $("#tr-count"),
+    best: $("#tr-best"),
+    startBtn: $("#tr-start"),
+    tapBtn: $("#tr-tap"),
+  });
+
+  const trainerCard = document.createElement("div");
+  trainerCard.className = "card";
+  trainerCard.innerHTML =
+    `<h3>⏱ 1-Minute Chord Changes</h3><p>The drill that makes songs playable: pick two chords and count how many clean switches you can make in 60 seconds.</p><span class="tag">scored · daily</span>`;
+  trainerCard.addEventListener("click", () => {
+    $("#exercise-player").classList.add("hidden");
+    exPlayer.stop();
+    $("#trainer-player").classList.remove("hidden");
+    renderPairChips();
+    trainer.setPair(trainer.pair);
+    caption.textContent = "Land the chord cleanly, tap, switch. Speed comes from repetition.";
+    $("#trainer-player").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+  exList.prepend(trainerCard);
+
+  function renderPairChips() {
+    const row = $("#tr-pairs");
+    row.innerHTML = "";
+    window.ChangeTrainer.PAIRS.forEach((pair) => {
+      const chip = document.createElement("button");
+      chip.className = "chip sm" + (pair === trainer.pair ? " active" : "");
+      chip.textContent = `${pair[0]} ↔ ${pair[1]}`;
+      chip.addEventListener("click", () => {
+        if (trainer.running) return;
+        trainer.setPair(pair);
+        row.querySelectorAll(".chip").forEach((c) => c.classList.remove("active"));
+        chip.classList.add("active");
+      });
+      row.appendChild(chip);
+    });
+  }
+
+  $("#tr-start").addEventListener("click", () => trainer.start());
+  $("#tr-tap").addEventListener("click", () => trainer.tap());
+  $("#tr-close").addEventListener("click", () => {
+    trainer.stop();
+    $("#trainer-player").classList.add("hidden");
+    fb.reset();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.code !== "Space" || !trainer.running) return;
+    if (/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+    e.preventDefault(); // don't scroll or re-click a focused button
+    trainer.tap();
   });
 
   $("#ex-play").addEventListener("click", () => (exPlayer.playing ? exPlayer.pause() : exPlayer.play()));
@@ -96,7 +168,9 @@
     onPitch: (p) => {
       tunerNote.textContent = p.noteName;
       tunerNote.classList.toggle("in-tune", p.inTune);
-      tunerTarget.textContent = `nearest string: ${window.STRING_NAMES[p.stringIdx]} (${window.STRING_FREQS[p.stringIdx].toFixed(1)} Hz)`;
+      tunerTarget.textContent = p.locked
+        ? `tuning: ${window.STRING_NAMES[p.stringIdx]} string (${window.STRING_FREQS[p.stringIdx].toFixed(1)} Hz)`
+        : `nearest string: ${window.STRING_NAMES[p.stringIdx]} (${window.STRING_FREQS[p.stringIdx].toFixed(1)} Hz)`;
       const clamped = Math.max(-50, Math.min(50, p.stringCents));
       needle.style.left = `${50 + clamped}%`;
       needle.classList.toggle("in-tune", p.inTune);
@@ -104,6 +178,9 @@
       if (p.inTune) {
         hint.textContent = `✓ ${window.STRING_NAMES[p.stringIdx]} string is in tune!`;
         hint.classList.add("good");
+      } else if (p.locked && Math.abs(p.stringCents) > 250) {
+        hint.textContent = `hmm — that sounds like a different string (hearing ${p.noteName})`;
+        hint.classList.remove("good");
       } else {
         hint.textContent = p.stringCents < 0 ? "tighten the string (too flat)" : "loosen the string (too sharp)";
         hint.classList.remove("good");
@@ -120,6 +197,35 @@
       $("#tuner-error").classList.remove("hidden");
     },
   });
+
+  /* string-lock buttons: Auto + one per string */
+  (function buildStringSelect() {
+    const row = $("#string-select");
+    const options = [{ label: "Auto", idx: null }].concat(
+      window.STRING_NAMES.map((n, i) => ({ label: n, idx: i }))
+    );
+    options.forEach((opt, i) => {
+      const chip = document.createElement("button");
+      chip.className = "chip sm" + (i === 0 ? " active" : "");
+      chip.textContent = opt.label;
+      chip.addEventListener("click", () => {
+        tuner.setLock(opt.idx);
+        row.querySelectorAll(".chip").forEach((c) => c.classList.remove("active"));
+        chip.classList.add("active");
+        fb.reset();
+        lastLit = -1;
+        if (opt.idx != null) {
+          fb.lightString(opt.idx, 1200, "lit-accent");
+          hint.textContent = `locked to the ${opt.label} string — pluck it`;
+          hint.classList.remove("good");
+        } else {
+          hint.textContent = "auto-detecting — pluck any string";
+          hint.classList.remove("good");
+        }
+      });
+      row.appendChild(chip);
+    });
+  })();
 
   function stopTuner() {
     tuner.stop();

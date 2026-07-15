@@ -7,7 +7,9 @@ A minimalist, in-browser guitar tutor. A visual guitar with real strings sits at
 - **Visual guitar** — an always-visible fretboard with six strings. Finger dots show *which finger* goes on *which fret* (1 = index … 4 = pinky), with **O** for open strings and **×** for strings you skip.
 - **Chord library** — 10 essential open chords. Tap one to see the shape, hear it strummed, and watch the strings light up in strum order.
 - **Beginner exercises** — spider crawl warm-up, C major scale, A minor pentatonic, and a G–C–D chord-change drill. Each has play/pause, step-through, tempo control, and a lit-string + audible pluck for every note.
-- **Tuner** — uses your microphone (with your permission) to hear your guitar. Autocorrelation pitch detection shows the note, a cents needle, and tighten/loosen hints. The matching string on the visual guitar glows amber while you're off and green when you're in tune.
+- **Tuner** — uses your microphone (with your permission) to hear your guitar. Autocorrelation pitch detection with median smoothing shows the note, a cents needle, and tighten/loosen hints. Auto-detects which string you plucked, or lock it to one string for noisy rooms. The matching string on the visual guitar glows amber while you're off and green when you're in tune.
+- **1-minute chord changes** — the classic beginner drill, scored. Pick a chord pair (G↔C, Em↔Am, …), tap every time you land the chord, and beat your personal best (saved per pair).
+- **Left-handed mode** — the 🫲 button in the top bar mirrors the whole fretboard, nut on the right.
 - **Song library** — follow-along mode shows the current chord, the next chord, the beat, and the strumming pattern (↓/↑). Strings pulse with every strum at an adjustable tempo.
 - **AI song requests** — ask for any song ("Wonderwall", "a mellow 3-chord song in C") and Claude extracts a beginner arrangement: chords, structure, strumming pattern, playing tips, and fingerings for any chords not already in the library. New songs persist in your browser.
 

@@ -1,25 +1,44 @@
 /* Interactive fretboard rendered as SVG.
- * String index convention everywhere: 0 = low E (bottom of screen) … 5 = high e (top). */
+ * String index convention everywhere: 0 = low E (bottom of screen) … 5 = high e (top).
+ * Supports left-handed mode: the nut moves to the right and frets run right→left. */
 window.Fretboard = class Fretboard {
-  constructor(container, frets = 12) {
+  constructor(container, { frets = 12, lefty = false } = {}) {
     this.container = container;
     this.frets = frets;
-    this.nutX = 90;
-    this.rightX = 985;
-    this.fretW = (this.rightX - this.nutX) / frets;
+    this.lefty = lefty;
     this.topY = 32;
     this.stringGap = 32;
-    this.stringEls = [];
-    this.lightTimers = [[], [], [], [], [], []];
+    this.lastChord = null;
     this._render();
   }
 
+  get boardLeft() { return this.lefty ? 15 : 90; }
+  get boardRight() { return this.lefty ? 910 : 985; }
+  get fretW() { return (this.boardRight - this.boardLeft) / this.frets; }
+  get labelX() { return this.lefty ? 968 : 26; }
+  get markerX() { return this.lefty ? 936 : 62; }
+
+  /* x of the fret wire itself (0 = nut) */
+  fretLineX(f) {
+    return this.lefty ? this.boardRight - f * this.fretW : this.boardLeft + f * this.fretW;
+  }
+  /* x of the middle of a fret space (where fingers go) */
+  xFor(fret) {
+    return this.lefty
+      ? this.boardRight - (fret - 0.5) * this.fretW
+      : this.boardLeft + (fret - 0.5) * this.fretW;
+  }
   yFor(string) {
     // low E (0) at the bottom, high e (5) at the top — like looking at your own guitar
     return this.topY + (5 - string) * this.stringGap;
   }
-  xFor(fret) {
-    return this.nutX + (fret - 0.5) * this.fretW;
+
+  /* Flip handedness and redraw whatever chord was showing */
+  setLefty(on) {
+    this.lefty = on;
+    const last = this.lastChord;
+    this._render();
+    if (last) this.showChord(last);
   }
 
   _render() {
@@ -28,6 +47,8 @@ window.Fretboard = class Fretboard {
     const svg = document.createElementNS(NS, "svg");
     svg.setAttribute("viewBox", `0 0 1000 ${h}`);
     this.svg = svg;
+    this.stringEls = [];
+    this.lightTimers = [[], [], [], [], [], []];
 
     const el = (tag, attrs, parent = svg) => {
       const e = document.createElementNS(NS, tag);
@@ -38,11 +59,11 @@ window.Fretboard = class Fretboard {
     this._el = el;
 
     // board background
-    el("rect", { x: this.nutX, y: this.topY - 14, width: this.rightX - this.nutX, height: 5 * this.stringGap + 28, rx: 6, fill: "#241a12" });
+    el("rect", { x: this.boardLeft, y: this.topY - 14, width: this.boardRight - this.boardLeft, height: 5 * this.stringGap + 28, rx: 6, fill: "#241a12" });
 
-    // frets
+    // frets (f = 0 is the nut)
     for (let f = 0; f <= this.frets; f++) {
-      const x = this.nutX + f * this.fretW;
+      const x = this.fretLineX(f);
       el("line", { x1: x, y1: this.topY - 14, x2: x, y2: this.topY + 5 * this.stringGap + 14, stroke: f === 0 ? "#d8cfc0" : "#4a4136", "stroke-width": f === 0 ? 7 : 2.5 });
     }
 
@@ -61,15 +82,13 @@ window.Fretboard = class Fretboard {
     const widths = [4.6, 3.8, 3.0, 2.4, 1.8, 1.3]; // low E … high e
     for (let s = 0; s < 6; s++) {
       const y = this.yFor(s);
-      el("text", { x: 26, y: y + 4, "text-anchor": "middle", fill: "#9a99a3", "font-size": 15, "font-family": "Fraunces, serif", "font-weight": 600 }).textContent = window.STRING_NAMES[s];
-      const line = el("line", { x1: this.nutX, y1: y, x2: this.rightX, y2: y, stroke: "#b8ad98", "stroke-width": widths[s], "stroke-linecap": "round", class: "fb-string" });
+      el("text", { x: this.labelX, y: y + 4, "text-anchor": "middle", fill: "#9a99a3", "font-size": 15, "font-family": "Fraunces, serif", "font-weight": 600 }).textContent = window.STRING_NAMES[s];
+      const line = el("line", { x1: this.boardLeft, y1: y, x2: this.boardRight, y2: y, stroke: "#b8ad98", "stroke-width": widths[s], "stroke-linecap": "round", class: "fb-string" });
       this.stringEls[s] = line;
     }
 
     // overlay group for chord dots / markers
-    const NSg = document.createElementNS(NS, "g");
-    svg.appendChild(NSg);
-    this.overlay = NSg;
+    this.overlay = el("g", {});
 
     this.container.innerHTML = "";
     this.container.appendChild(svg);
@@ -77,6 +96,7 @@ window.Fretboard = class Fretboard {
 
   clearOverlay() {
     this.overlay.innerHTML = "";
+    this.lastChord = null;
   }
 
   clearLights() {
@@ -96,7 +116,7 @@ window.Fretboard = class Fretboard {
   lightString(string, dur = 700, cls = "lit") {
     const elS = this.stringEls[string];
     elS.classList.remove("lit", "lit-accent");
-    void elS.getBBox && elS.getBoundingClientRect(); // restart transition
+    void elS.getBoundingClientRect(); // restart transition
     elS.classList.add(cls);
     const t = setTimeout(() => elS.classList.remove(cls), dur);
     this.lightTimers[string].push(t);
@@ -116,9 +136,9 @@ window.Fretboard = class Fretboard {
     return g;
   }
 
-  /* Open (O) / muted (×) markers to the left of the nut */
+  /* Open (O) / muted (×) markers beside the nut */
   nutMarker(string, type) {
-    const x = 62;
+    const x = this.markerX;
     const y = this.yFor(string);
     if (type === "open") {
       this._el("circle", { cx: x, cy: y, r: 8, fill: "none", stroke: "#7ee08a", "stroke-width": 2 }, this.overlay);
@@ -131,6 +151,7 @@ window.Fretboard = class Fretboard {
   /* Show a full chord shape: dots, O/× markers */
   showChord(chord, { light = false } = {}) {
     this.reset();
+    this.lastChord = chord;
     for (let s = 0; s < 6; s++) {
       const f = chord.frets[s];
       if (f === -1) this.nutMarker(s, "mute");

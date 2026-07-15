@@ -1,11 +1,21 @@
 /* Microphone tuner — autocorrelation pitch detection (ACF2+),
- * mapped to the nearest standard-tuning guitar string. */
+ * smoothed with a median filter, mapped to a guitar string
+ * (auto-detected, or locked to one string the user picks). */
 window.Tuner = class Tuner {
   constructor({ onPitch, onError }) {
     this.onPitch = onPitch;
     this.onError = onError;
     this.running = false;
     this.buf = new Float32Array(2048);
+    this.lock = null;      // null = auto-detect nearest string, 0–5 = locked
+    this.history = [];     // recent raw freqs for median smoothing
+    this.silentFrames = 0;
+  }
+
+  /* Lock to a specific string (0 = low E … 5 = high e) or null for auto */
+  setLock(idx) {
+    this.lock = idx;
+    this.history = [];
   }
 
   async start() {
@@ -23,6 +33,8 @@ window.Tuner = class Tuner {
     this.analyser.fftSize = 2048;
     src.connect(this.analyser);
     this.running = true;
+    this.history = [];
+    this.silentFrames = 0;
     this._loop();
     return true;
   }
@@ -38,11 +50,21 @@ window.Tuner = class Tuner {
     if (!this.running) return;
     this.analyser.getFloatTimeDomainData(this.buf);
     const freq = Tuner.autoCorrelate(this.buf, this.ctx.sampleRate);
-    if (freq > 0) this.onPitch(this._analyze(freq));
+    if (freq > 0) {
+      this.silentFrames = 0;
+      this.history.push(freq);
+      if (this.history.length > 5) this.history.shift();
+      // median kills octave-jump glitches and single-frame noise
+      const sorted = [...this.history].sort((a, b) => a - b);
+      const median = sorted[Math.floor(sorted.length / 2)];
+      this.onPitch(this._analyze(median));
+    } else if (++this.silentFrames > 20) {
+      this.history = []; // string has rung out — don't smooth across plucks
+    }
     requestAnimationFrame(() => this._loop());
   }
 
-  /* Map a frequency to note name + nearest guitar string + cents offset */
+  /* Map a frequency to note name + guitar string + cents offset */
   _analyze(freq) {
     const NOTES = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
     const midi = 69 + 12 * Math.log2(freq / 440);
@@ -50,16 +72,25 @@ window.Tuner = class Tuner {
     const cents = Math.round((midi - nearest) * 100);
     const noteName = NOTES[((nearest % 12) + 12) % 12] + (Math.floor(nearest / 12) - 1);
 
-    // nearest standard-tuning string
-    let stringIdx = 0, best = Infinity;
-    window.STRING_FREQS.forEach((f, i) => {
-      const d = Math.abs(Math.log2(freq / f));
-      if (d < best) { best = d; stringIdx = i; }
-    });
+    let stringIdx;
+    if (this.lock != null) {
+      stringIdx = this.lock;
+    } else {
+      stringIdx = 0;
+      let best = Infinity;
+      window.STRING_FREQS.forEach((f, i) => {
+        const d = Math.abs(Math.log2(freq / f));
+        if (d < best) { best = d; stringIdx = i; }
+      });
+    }
     const target = window.STRING_FREQS[stringIdx];
     const stringCents = Math.round(1200 * Math.log2(freq / target));
 
-    return { freq, noteName, cents, stringIdx, stringCents, inTune: Math.abs(stringCents) <= 6 };
+    return {
+      freq, noteName, cents, stringIdx, stringCents,
+      locked: this.lock != null,
+      inTune: Math.abs(stringCents) <= 6,
+    };
   }
 
   /* Classic ACF2+ autocorrelation. Returns frequency in Hz, or -1 if no clear pitch. */

@@ -142,6 +142,23 @@ input[type="range"] { accent-color: var(--accent); }
 .tuner-hint { min-height: 1.4rem; color: var(--accent); font-size: 0.95rem; }
 .tuner-hint.good { color: var(--lit); }
 
+/* ── tuner string lock ── */
+.string-select { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; }
+.chip.sm { font-size: 0.9rem; padding: 0.35rem 0.85rem; }
+
+/* ── chord-change trainer ── */
+.pair-row { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; margin-bottom: 0.4rem; }
+.trainer-stats {
+  display: flex; gap: 2.4rem; justify-content: center; align-items: baseline;
+  padding: 0.4rem 0 1rem;
+}
+.stat-num { font: 600 1.6rem "Fraunces", serif; color: var(--text); }
+#tr-tap:not(:disabled) { border-color: var(--lit); color: var(--lit); }
+#tr-tap:not(:disabled):active { background: rgba(126, 224, 138, 0.15); transform: scale(0.98); }
+
+/* lefty toggle state */
+#lefty-btn.on { color: var(--accent); border-color: var(--accent); }
+
 /* ── song player ── */
 .song-now { display: flex; align-items: center; gap: 2.2rem; justify-content: center; padding: 0.8rem 0 1.1rem; flex-wrap: wrap; }
 .song-chord-now, .song-chord-next { text-align: center; }
