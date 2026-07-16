@@ -482,6 +482,57 @@
     $("#ai-song-input").focus();
   });
 
+  /* Shared by API requests and paste-imports: register shapes, verify
+   * playability, persist, re-render, and open the new song. */
+  function addSongToLibrary(song) {
+    (song.chordShapes || []).forEach(window.registerChord);
+    // registerChord rejects malformed shapes — make sure nothing is left unplayable
+    for (const sec of song.sections)
+      for (const c of sec.chords)
+        if (!window.CHORDS[c.chord])
+          throw new Error(`chord "${c.chord}" came back malformed — try requesting again.`);
+    window.SONGS.push(song);
+    window.saveAISong(song);
+    renderSongs();
+    renderChordGrid();
+    closeModals();
+    openSong(song);
+  }
+
+  /* Import from Claude (no API key): copy prompt → paste reply */
+  $("#import-btn").addEventListener("click", () => {
+    $("#import-status").textContent = "";
+    openModal("#import-modal");
+    $("#import-song-input").focus();
+  });
+
+  $("#import-copy").addEventListener("click", async () => {
+    const query = $("#import-song-input").value.trim();
+    const status = $("#import-status");
+    if (!query) { status.textContent = "Type a song name first."; return; }
+    const prompt = window.FretFlowAI.buildImportPrompt(query);
+    try {
+      await navigator.clipboard.writeText(prompt);
+      status.textContent = "✓ Prompt copied — paste it into a claude.ai chat, then bring the reply back here.";
+    } catch (_) {
+      // clipboard blocked (permissions/insecure context) — show it for manual copy
+      $("#import-paste").value = prompt;
+      status.textContent = "Couldn't access the clipboard — the prompt is in the box below. Copy it, send it to Claude, then replace it with Claude's reply.";
+    }
+  });
+
+  $("#import-submit").addEventListener("click", () => {
+    const status = $("#import-status");
+    try {
+      const song = window.FretFlowAI.importSong($("#import-paste").value);
+      addSongToLibrary(song);
+      $("#import-paste").value = "";
+      $("#import-song-input").value = "";
+    } catch (err) {
+      status.textContent = err.message;
+    }
+  });
+
   $("#ai-submit").addEventListener("click", submitAIRequest);
   $("#ai-song-input").addEventListener("keydown", (e) => { if (e.key === "Enter") submitAIRequest(); });
 
@@ -494,19 +545,8 @@
     status.textContent = "🎼 Working out the chords… (this can take ~30s)";
     try {
       const song = await window.FretFlowAI.requestSong(query);
-      (song.chordShapes || []).forEach(window.registerChord);
-      // registerChord rejects malformed shapes — make sure nothing is left unplayable
-      for (const sec of song.sections)
-        for (const c of sec.chords)
-          if (!window.CHORDS[c.chord])
-            throw new Error(`chord "${c.chord}" came back malformed — try requesting again.`);
-      window.SONGS.push(song);
-      window.saveAISong(song);
-      renderSongs();
-      renderChordGrid();
-      closeModals();
+      addSongToLibrary(song);
       $("#ai-song-input").value = "";
-      openSong(song);
     } catch (err) {
       status.textContent =
         err.message === "NO_KEY"

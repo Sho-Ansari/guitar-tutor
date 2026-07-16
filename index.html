@@ -167,7 +167,10 @@
       <div class="panel-head">
         <h2>Song library</h2>
         <p class="muted">Pick a song and follow along — the guitar shows each chord and the strings pulse with the strumming pattern.</p>
-        <button id="ai-request-btn" class="btn accent">✨ Request a song with AI</button>
+        <div class="row">
+          <button id="ai-request-btn" class="btn accent">✨ Request a song with AI</button>
+          <button id="import-btn" class="btn">📋 Import from Claude (free)</button>
+        </div>
       </div>
       <div id="song-list" class="card-grid"></div>
     </section>
@@ -181,6 +184,21 @@
       <input id="ai-song-input" type="text" placeholder='e.g. "Wonderwall by Oasis" or "a simple 3-chord campfire song"' />
       <button id="ai-submit" class="btn accent">Get chords &amp; strumming</button>
       <div id="ai-status" class="muted small"></div>
+    </div>
+  </div>
+
+  <!-- Import from Claude modal (no API key needed) -->
+  <div id="import-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head"><h3>📋 Import from Claude</h3><button class="icon-btn modal-close">✕</button></div>
+      <p class="muted small">No API key needed — your regular <a href="https://claude.ai" target="_blank" rel="noopener">claude.ai</a> chat does the work.</p>
+      <label class="step-label">1 · What song do you want?</label>
+      <input id="import-song-input" type="text" placeholder='e.g. "Wonderwall by Oasis"' />
+      <button id="import-copy" class="btn">📋 Copy prompt</button>
+      <label class="step-label">2 · Paste the prompt into a claude.ai chat, then paste Claude's reply below:</label>
+      <textarea id="import-paste" rows="5" placeholder="Paste Claude's JSON reply here…"></textarea>
+      <button id="import-submit" class="btn accent">Import song</button>
+      <div id="import-status" class="muted small"></div>
     </div>
   </div>
 

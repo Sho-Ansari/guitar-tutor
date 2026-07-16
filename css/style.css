@@ -196,7 +196,15 @@ input[type="range"] { accent-color: var(--accent); }
   color: var(--text); font: 400 0.95rem "Sora", sans-serif; padding: 0.7rem 0.9rem; width: 100%;
 }
 .modal-card input:focus { outline: none; border-color: var(--accent); }
-.row { display: flex; gap: 0.6rem; }
+.modal-card textarea {
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+  color: var(--text); font: 400 0.85rem "Sora", sans-serif; padding: 0.7rem 0.9rem;
+  width: 100%; resize: vertical;
+}
+.modal-card textarea:focus { outline: none; border-color: var(--accent); }
+.step-label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+.modal-card a { color: var(--accent); }
+.row { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 
 /* ── fretboard svg classes ── */
 .fb-string { transition: stroke .12s, filter .12s; }
