@@ -18,6 +18,30 @@ window.FretFlowAI = (() => {
         description:
           "One bar of eighth-note strum slots. Exactly beatsPerBar*2 characters, each 'D' (down), 'U' (up), or '-' (no strum). Example for 4/4: 'D-DU-UDU'",
       },
+      style: {
+        type: "string",
+        enum: ["strum", "picking"],
+        description: "'picking' for fingerstyle arrangements, otherwise 'strum'.",
+      },
+      pattern: {
+        type: "array",
+        description:
+          "Fingerpicking pattern for ONE bar; required content when style is 'picking', otherwise an empty array. Exactly beatsPerBar*2 entries. Each entry is null (rest) or {s, f}: s = string index 0 (low E) to 5 (high e), or -1 meaning 'the current chord's bass string'; f = right-hand finger 'p' (thumb), 'i', 'm', or 'a'.",
+        items: {
+          anyOf: [
+            { type: "null" },
+            {
+              type: "object",
+              properties: {
+                s: { type: "integer" },
+                f: { type: "string", enum: ["p", "i", "m", "a"] },
+              },
+              required: ["s", "f"],
+              additionalProperties: false,
+            },
+          ],
+        },
+      },
       tag: { type: "string", description: "Short difficulty/vibe label, e.g. '4 chords · pop'" },
       playingNotes: { type: "string", description: "One or two sentences of playing advice: picking vs strumming, capo, tricky changes." },
       sections: {
@@ -59,7 +83,7 @@ window.FretFlowAI = (() => {
         },
       },
     },
-    required: ["title", "artist", "tempo", "beatsPerBar", "strum", "tag", "playingNotes", "sections", "chordShapes"],
+    required: ["title", "artist", "tempo", "beatsPerBar", "strum", "style", "pattern", "tag", "playingNotes", "sections", "chordShapes"],
     additionalProperties: false,
   };
 
@@ -68,6 +92,7 @@ Given a song request, produce a simplified beginner arrangement:
 - Prefer open chords (G, C, D, E, Em, Am, A, Dm, F small shape, B7). Transpose or simplify (e.g. suggest a capo in playingNotes) to avoid barre chords when possible.
 - Keep one chord per bar where you can; use the song's real progression and structure (intro/verse/chorus) at a simplified level.
 - The strum pattern must be exactly beatsPerBar*2 characters of D, U, or -.
+- If the request asks for fingerpicking/fingerstyle (or the song is traditionally fingerpicked), set style "picking" and give a beginner-friendly one-bar pattern (thumb on the bass via s: -1, fingers i/m/a on strings 3/4/5). Otherwise style "strum" with an empty pattern array. The strum field is required either way.
 - chordShapes must include every chord that appears in sections, with accurate standard-tuning fingerings.
 - If the request is vague, invent a pleasant simple progression that fits the description.`;
 
@@ -103,6 +128,8 @@ Reply with ONLY a single JSON object — no markdown fences, no commentary befor
   "tempo": 90,
   "beatsPerBar": 4,
   "strum": "D-DU-UDU",
+  "style": "strum",
+  "pattern": [],
   "tag": "short label like '4 chords · pop'",
   "playingNotes": "one or two sentences of playing advice",
   "sections": [
@@ -115,6 +142,7 @@ Reply with ONLY a single JSON object — no markdown fences, no commentary befor
 
 Rules for the JSON:
 - "beatsPerBar" is 3 or 4. "strum" is exactly beatsPerBar*2 characters, each "D" (down), "U" (up), or "-" (no strum).
+- If the request is for fingerpicking/fingerstyle, set "style": "picking" and fill "pattern" with exactly beatsPerBar*2 entries — each null (rest) or {"s": stringIndex, "f": finger} where s is 0 (low E) to 5 (high e) or -1 for the chord's bass string, and f is "p" (thumb), "i", "m", or "a". Otherwise "style": "strum" with "pattern": []. "strum" is required either way.
 - "chordShapes" must include EVERY chord name used in "sections". "frets" and "fingers" are 6 entries ordered low E string to high e string; fret -1 = muted, 0 = open; finger 0 = none, 1-4 = index-pinky.`;
   }
 

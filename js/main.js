@@ -17,20 +17,21 @@
   });
 
   /* ── tabs ── */
+  function activateTab(name) {
+    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
+    document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+    $(`#panel-${name}`).classList.add("active");
+    exPlayer.pause();
+    songPlayer.stop();
+    pickPlayer.stop();
+    trainer.stop();
+    stopEar();
+    if (name !== "tuner" && tuner.running) stopTuner();
+    fb.reset();
+    caption.textContent = "";
+  }
   document.querySelectorAll(".tab").forEach((tab) => {
-    tab.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
-      document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
-      tab.classList.add("active");
-      $(`#panel-${tab.dataset.tab}`).classList.add("active");
-      exPlayer.pause();
-      songPlayer.stop();
-      trainer.stop();
-      stopEar();
-      if (tab.dataset.tab !== "tuner" && tuner.running) stopTuner();
-      fb.reset();
-      caption.textContent = "";
-    });
+    tab.addEventListener("click", () => activateTab(tab.dataset.tab));
   });
 
   /* ── chords ── */
@@ -408,7 +409,7 @@
   const songList = $("#song-list");
   function renderSongs() {
     songList.innerHTML = "";
-    window.SONGS.forEach((song) => {
+    window.SONGS.filter((s) => s.style !== "picking").forEach((song) => {
       // Song fields can come from the AI or localStorage — never innerHTML them
       const card = document.createElement("div");
       card.className = "card";
@@ -446,6 +447,56 @@
     $("#song-tempo-val").textContent = e.target.value;
   });
 
+  /* ── fingerpicking tab: same engine, picking songs only ── */
+  const pickPlayer = new window.SongPlayer(fb, {
+    chordNow: $("#pk-chord"),
+    chordNext: $("#pk-next"),
+    section: $("#pk-section"),
+    strumRow: $("#pk-strum-row"),
+    beatRow: $("#pk-beat-row"),
+    playBtn: $("#pk-play"),
+  });
+
+  const pickList = $("#pick-list");
+  function renderPickingSongs() {
+    pickList.innerHTML = "";
+    window.SONGS.filter((s) => s.style === "picking").forEach((song) => {
+      const card = document.createElement("div");
+      card.className = "card";
+      const h3 = document.createElement("h3");
+      h3.textContent = song.title;
+      const p = document.createElement("p");
+      p.textContent = song.artist + (song.playingNotes ? " — " + song.playingNotes : "");
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = song.tag || "fingerstyle";
+      card.append(h3, p, tag);
+      card.addEventListener("click", () => openPickSong(song));
+      pickList.appendChild(card);
+    });
+  }
+  renderPickingSongs();
+
+  function openPickSong(song) {
+    $("#pick-player").classList.remove("hidden");
+    $("#pk-title").textContent = `${song.title} · ${song.artist}`;
+    $("#pk-tempo").value = song.tempo;
+    $("#pk-tempo-val").textContent = song.tempo;
+    pickPlayer.load(song);
+    caption.textContent = "One string lights per pluck — p is your thumb on the bass, i·m·a pick the trebles.";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  $("#pk-play").addEventListener("click", () => {
+    if (pickPlayer.playing) { pickPlayer.stop(); pickPlayer._showSlot(0, { silent: true }); }
+    else pickPlayer.play();
+  });
+  $("#pk-close").addEventListener("click", () => { pickPlayer.stop(); $("#pick-player").classList.add("hidden"); fb.reset(); });
+  $("#pk-tempo").addEventListener("input", (e) => {
+    pickPlayer.setTempo(+e.target.value);
+    $("#pk-tempo-val").textContent = e.target.value;
+  });
+
   /* ── modals ── */
   function openModal(id) { $(id).classList.remove("hidden"); }
   function closeModals() { document.querySelectorAll(".modal").forEach((m) => m.classList.add("hidden")); }
@@ -475,12 +526,15 @@
   });
 
   /* AI song request */
-  $("#ai-request-btn").addEventListener("click", () => {
+  function openAIModal(hint) {
     if (!window.FretFlowAI.getKey()) { openModal("#key-modal"); return; }
+    styleHint = hint;
     $("#ai-status").textContent = "";
     openModal("#ai-modal");
     $("#ai-song-input").focus();
-  });
+  }
+  $("#ai-request-btn").addEventListener("click", () => openAIModal(""));
+  $("#ai-pick-btn").addEventListener("click", () => openAIModal("picking"));
 
   /* Shared by API requests and paste-imports: register shapes, verify
    * playability, persist, re-render, and open the new song. */
@@ -494,23 +548,36 @@
     window.SONGS.push(song);
     window.saveAISong(song);
     renderSongs();
+    renderPickingSongs();
     renderChordGrid();
     closeModals();
-    openSong(song);
+    // land the user in the right tab for the song's style
+    if (song.style === "picking") { activateTab("picking"); openPickSong(song); }
+    else { activateTab("songs"); openSong(song); }
   }
 
+  /* Requests started from the Picking tab nudge the AI toward fingerstyle */
+  let styleHint = "";
+  const withStyleHint = (query) =>
+    styleHint === "picking"
+      ? `${query} — arrange as FINGERSTYLE (style "picking" with a one-bar picking pattern)`
+      : query;
+
   /* Import from Claude (no API key): copy prompt → paste reply */
-  $("#import-btn").addEventListener("click", () => {
+  function openImportModal(hint) {
+    styleHint = hint;
     $("#import-status").textContent = "";
     openModal("#import-modal");
     $("#import-song-input").focus();
-  });
+  }
+  $("#import-btn").addEventListener("click", () => openImportModal(""));
+  $("#import-pick-btn").addEventListener("click", () => openImportModal("picking"));
 
   $("#import-copy").addEventListener("click", async () => {
     const query = $("#import-song-input").value.trim();
     const status = $("#import-status");
     if (!query) { status.textContent = "Type a song name first."; return; }
-    const prompt = window.FretFlowAI.buildImportPrompt(query);
+    const prompt = window.FretFlowAI.buildImportPrompt(withStyleHint(query));
     try {
       await navigator.clipboard.writeText(prompt);
       status.textContent = "✓ Prompt copied — paste it into a claude.ai chat, then bring the reply back here.";
@@ -544,7 +611,7 @@
     btn.disabled = true;
     status.textContent = "🎼 Working out the chords… (this can take ~30s)";
     try {
-      const song = await window.FretFlowAI.requestSong(query);
+      const song = await window.FretFlowAI.requestSong(withStyleHint(query));
       addSongToLibrary(song);
       $("#ai-song-input").value = "";
     } catch (err) {

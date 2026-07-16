@@ -171,10 +171,13 @@ input[type="range"] { accent-color: var(--accent); }
 .song-meta { display: flex; flex-direction: column; gap: 0.45rem; align-items: center; }
 .strum-row { display: flex; gap: 0.35rem; }
 .strum-cell {
-  width: 1.9rem; height: 1.9rem; display: grid; place-items: center;
+  width: 1.9rem; height: 2.1rem; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
   border: 1px solid var(--line); border-radius: 8px; color: var(--muted);
   font-size: 0.9rem; transition: all .1s;
 }
+.strum-cell .pick-f { font-weight: 600; font-size: 0.95rem; line-height: 1.1; font-style: italic; font-family: "Fraunces", serif; }
+.strum-cell .pick-s { font-size: 0.55rem; color: var(--muted); line-height: 1; margin-top: 2px; }
 .strum-cell.hit { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .strum-cell.now { transform: scale(1.18); border-color: var(--lit); color: var(--lit); background: rgba(126,224,138,0.12); }
 .beat-row { display: flex; gap: 0.5rem; }

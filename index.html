@@ -26,6 +26,7 @@
       <button class="tab" data-tab="exercises">Exercises</button>
       <button class="tab" data-tab="tuner">Tuner</button>
       <button class="tab" data-tab="songs">Songs</button>
+      <button class="tab" data-tab="picking">Picking</button>
     </nav>
     <button id="lefty-btn" class="icon-btn" title="Toggle left-handed mode">🫲</button>
     <button id="settings-btn" class="icon-btn" title="AI settings">⚙</button>
@@ -173,6 +174,45 @@
         </div>
       </div>
       <div id="song-list" class="card-grid"></div>
+    </section>
+
+    <!-- FINGERPICKING -->
+    <section class="panel" id="panel-picking">
+      <div id="pick-player" class="player hidden">
+        <div class="player-head">
+          <h3 id="pk-title"></h3>
+          <button id="pk-close" class="icon-btn">✕</button>
+        </div>
+        <div class="song-now">
+          <div class="song-chord-now">
+            <span class="muted small">now</span>
+            <div id="pk-chord" class="big-step">—</div>
+          </div>
+          <div class="song-chord-next">
+            <span class="muted small">next</span>
+            <div id="pk-next" class="mid-step">—</div>
+          </div>
+          <div class="song-meta">
+            <div id="pk-section" class="muted"></div>
+            <div class="strum-row" id="pk-strum-row"></div>
+            <div class="beat-row" id="pk-beat-row"></div>
+          </div>
+        </div>
+        <div class="player-controls">
+          <button id="pk-play" class="btn accent">▶ Play</button>
+          <label class="tempo-ctl">Tempo <input type="range" id="pk-tempo" min="40" max="160" value="80" /> <span id="pk-tempo-val">80</span> bpm</label>
+        </div>
+      </div>
+
+      <div class="panel-head">
+        <h2>Fingerpicking</h2>
+        <p class="muted">Right-hand letters: <b>p</b> thumb · <b>i</b> index · <b>m</b> middle · <b>a</b> ring. The thumb takes each chord's bass string. Left hand holds the chord as usual — watch the lit string and pluck along.</p>
+        <div class="row">
+          <button id="ai-pick-btn" class="btn accent">✨ Request a fingerstyle song</button>
+          <button id="import-pick-btn" class="btn">📋 Import from Claude (free)</button>
+        </div>
+      </div>
+      <div id="pick-list" class="card-grid"></div>
     </section>
   </main>
 

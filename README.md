@@ -11,6 +11,7 @@ A minimalist, in-browser guitar tutor. A visual guitar with real strings sits at
 - **1-minute chord changes** — the classic beginner drill, scored. Pick a chord pair (G↔C, Em↔Am, …), tap every time you land the chord, and beat your personal best (saved per pair).
 - **Left-handed mode** — the 🫲 button in the top bar mirrors the whole fretboard, nut on the right.
 - **Song library** — follow-along mode shows the current chord, the next chord, the beat, and the strumming pattern (↓/↑). Strings pulse with every strum at an adjustable tempo.
+- **Fingerpicking tab** — its own library of fingerstyle songs (House of the Rising Sun, Greensleeves, Scarborough Fair, an arpeggio study). The pattern row shows right-hand fingers (p·i·m·a) and target strings; exactly one string lights per pluck, with the thumb automatically following each chord's bass string. AI requests and Claude imports work here too.
 - **AI song requests** — ask for any song ("Wonderwall", "a mellow 3-chord song in C") and Claude extracts a beginner arrangement: chords, structure, strumming pattern, playing tips, and fingerings for any chords not already in the library. New songs persist in your browser. Two ways to use it:
   - **✨ One-click (API key)** — the app calls the Claude API directly; needs a key from platform.claude.com.
   - **📋 Import from Claude (free)** — no key needed: the app generates a prompt, you paste it into a regular [claude.ai](https://claude.ai) chat, then paste Claude's JSON reply back. Same validation, same result.

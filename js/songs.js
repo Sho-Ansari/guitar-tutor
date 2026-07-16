@@ -1,6 +1,10 @@
 /* Song library + follow-along player.
+ * style: "strum" (default) or "picking".
  * strum: one bar of eighth-note slots. "D" down, "U" up, "-" no strum.
  *        4/4 songs use 8 slots, 3/4 songs use 6.
+ * pattern (picking songs): one bar of eighth-note slots; each is null (rest)
+ *        or { s, f } — s = string index 0 (low E) … 5 (high e), or -1 for the
+ *        current chord's bass string; f = right-hand finger "p"|"i"|"m"|"a".
  * sections[].chords: [{ chord, beats }]
  */
 window.SONGS = [
@@ -68,6 +72,87 @@ window.SONGS = [
   },
 ];
 
+/* Built-in fingerpicking songs — same format, style: "picking" */
+(() => {
+  const p = (s, f) => ({ s, f });
+  const CLASSIC_ARP = [p(-1, "p"), p(3, "i"), p(4, "m"), p(5, "a"), p(4, "m"), p(3, "i")]; // THE beginner pattern
+
+  window.SONGS.push(
+    {
+      title: "House of the Rising Sun",
+      artist: "Traditional · fingerstyle",
+      style: "picking",
+      tempo: 104,
+      beatsPerBar: 3,
+      pattern: CLASSIC_ARP,
+      strum: "D-----",
+      tag: "the classic first picking song",
+      sections: [
+        { name: "Verse", chords: [
+          { chord: "Am", beats: 3 }, { chord: "C", beats: 3 }, { chord: "D", beats: 3 }, { chord: "F", beats: 3 },
+          { chord: "Am", beats: 3 }, { chord: "C", beats: 3 }, { chord: "E", beats: 3 }, { chord: "E", beats: 3 },
+          { chord: "Am", beats: 3 }, { chord: "C", beats: 3 }, { chord: "D", beats: 3 }, { chord: "F", beats: 3 },
+          { chord: "Am", beats: 3 }, { chord: "E", beats: 3 }, { chord: "Am", beats: 3 }, { chord: "Am", beats: 3 },
+        ]},
+      ],
+    },
+    {
+      title: "Greensleeves",
+      artist: "Traditional · fingerstyle",
+      style: "picking",
+      tempo: 96,
+      beatsPerBar: 3,
+      pattern: [p(-1, "p"), p(3, "i"), p(4, "m"), p(-1, "p"), p(3, "i"), p(4, "m")], // p-i-m twice a bar
+      strum: "D-----",
+      tag: "gentle waltz picking",
+      sections: [
+        { name: "Verse", chords: [
+          { chord: "Am", beats: 3 }, { chord: "C", beats: 3 }, { chord: "G", beats: 3 }, { chord: "Em", beats: 3 },
+          { chord: "Am", beats: 3 }, { chord: "C", beats: 3 }, { chord: "E", beats: 3 }, { chord: "E", beats: 3 },
+        ]},
+        { name: "Chorus", chords: [
+          { chord: "C", beats: 3 }, { chord: "C", beats: 3 }, { chord: "G", beats: 3 }, { chord: "Em", beats: 3 },
+          { chord: "Am", beats: 3 }, { chord: "E", beats: 3 }, { chord: "Am", beats: 3 }, { chord: "Am", beats: 3 },
+        ]},
+      ],
+    },
+    {
+      title: "Scarborough Fair",
+      artist: "Traditional · fingerstyle",
+      style: "picking",
+      tempo: 88,
+      beatsPerBar: 3,
+      pattern: [p(-1, "p"), p(4, "m"), p(3, "i"), p(5, "a"), p(3, "i"), p(4, "m")], // inside-out arpeggio
+      strum: "D-----",
+      tag: "flowing & folky",
+      sections: [
+        { name: "Verse", chords: [
+          { chord: "Am", beats: 3 }, { chord: "Am", beats: 3 }, { chord: "G", beats: 3 }, { chord: "Am", beats: 3 },
+          { chord: "Am", beats: 3 }, { chord: "C", beats: 3 }, { chord: "D", beats: 3 }, { chord: "Am", beats: 3 },
+          { chord: "Am", beats: 3 }, { chord: "C", beats: 3 }, { chord: "G", beats: 3 }, { chord: "Em", beats: 3 },
+          { chord: "Am", beats: 3 }, { chord: "G", beats: 3 }, { chord: "Am", beats: 3 }, { chord: "Am", beats: 3 },
+        ]},
+      ],
+    },
+    {
+      title: "Arpeggio Study in C",
+      artist: "Practice piece",
+      style: "picking",
+      tempo: 76,
+      beatsPerBar: 4,
+      pattern: [p(-1, "p"), null, p(3, "i"), p(4, "m"), p(5, "a"), p(4, "m"), p(3, "i"), null],
+      strum: "D-------",
+      tag: "pattern drill · 4 chords",
+      playingNotes: "Keep the thumb on the bass and let every note ring into the next.",
+      sections: [
+        { name: "Loop", chords: [
+          { chord: "C", beats: 4 }, { chord: "Am", beats: 4 }, { chord: "Dm", beats: 4 }, { chord: "G", beats: 4 },
+        ]},
+      ],
+    },
+  );
+})();
+
 /* Sanitize a song coming from an untrusted source (AI response or
  * localStorage). Returns a clean copy, or null if structurally invalid.
  * Everything is length-capped, type-checked, and range-clamped. */
@@ -93,6 +178,20 @@ window.sanitizeSong = function (raw) {
   const strumSrc = str(raw.strum, 16);
   song.strum = (strumSrc + "-".repeat(slots)).slice(0, slots)
     .split("").map((c) => (c === "D" || c === "U" ? c : "-")).join("");
+
+  // picking style: pattern of {s: -1..5, f: p|i|m|a} | null per slot
+  song.style = raw.style === "picking" ? "picking" : "strum";
+  song.pattern = [];
+  if (song.style === "picking") {
+    if (!Array.isArray(raw.pattern)) return null;
+    for (const pick of raw.pattern.slice(0, slots)) {
+      if (pick == null) { song.pattern.push(null); continue; }
+      if (!Number.isInteger(pick.s) || pick.s < -1 || pick.s > 5) return null;
+      song.pattern.push({ s: pick.s, f: ["p", "i", "m", "a"].includes(pick.f) ? pick.f : "p" });
+    }
+    while (song.pattern.length < slots) song.pattern.push(null);
+    if (!song.pattern.some(Boolean)) return null; // all rests = not a pattern
+  }
 
   if (!Array.isArray(raw.sections) || raw.sections.length === 0) return null;
   for (const sec of raw.sections.slice(0, 20)) {
@@ -158,16 +257,19 @@ window.SongPlayer = class SongPlayer {
   /* Flatten sections into eighth-note slots */
   _buildSlots(song) {
     const perBar = song.beatsPerBar * 2;
+    const picking = song.style === "picking";
     const slots = [];
     for (const section of song.sections) {
       for (const entry of section.chords) {
         const n = entry.beats * 2;
         for (let i = 0; i < n; i++) {
+          const barPos = slots.length % perBar;
           slots.push({
             chord: entry.chord,
             section: section.name,
-            strumChar: song.strum[slots.length % perBar] || "-",
-            barPos: slots.length % perBar,
+            strumChar: picking ? "-" : (song.strum[barPos] || "-"),
+            pick: picking ? song.pattern[barPos] : null,
+            barPos,
           });
         }
       }
@@ -175,8 +277,37 @@ window.SongPlayer = class SongPlayer {
     return slots;
   }
 
+  /* Which string does a pick target for this chord? -1 = the chord's bass;
+   * a muted string falls back to the bass so patterns work on any shape. */
+  static resolveString(chord, s) {
+    if (s >= 0 && s <= 5 && chord.frets[s] >= 0) return s;
+    for (let i = 0; i < 6; i++) if (chord.frets[i] >= 0) return i;
+    return 0;
+  }
+
   _renderStrumRow() {
     this.ui.strumRow.innerHTML = "";
+    if (this.song.style === "picking") {
+      // finger letter on top, target string underneath
+      this.strumCells = this.song.pattern.map((pick) => {
+        const cell = document.createElement("div");
+        cell.className = "strum-cell" + (pick ? " hit" : "");
+        if (pick) {
+          const f = document.createElement("div");
+          f.className = "pick-f";
+          f.textContent = pick.f;
+          const st = document.createElement("div");
+          st.className = "pick-s";
+          st.textContent = pick.s === -1 ? "bass" : window.STRING_NAMES[pick.s];
+          cell.append(f, st);
+        } else {
+          cell.textContent = "·";
+        }
+        this.ui.strumRow.appendChild(cell);
+        return cell;
+      });
+      return;
+    }
     this.strumCells = [...this.song.strum].map((ch) => {
       const cell = document.createElement("div");
       cell.className = "strum-cell" + (ch === "-" ? "" : " hit");
@@ -215,10 +346,16 @@ window.SongPlayer = class SongPlayer {
     this.strumCells.forEach((c, i) => c.classList.toggle("now", i === slot.barPos));
     this.beatDots.forEach((d, i) => d.classList.toggle("now", i === Math.floor(slot.barPos / 2)));
 
-    // light + sound on actual strums
-    if (!silent && chord && (slot.strumChar === "D" || slot.strumChar === "U")) {
-      this.fb.lightChord(chord, slot.strumChar, 350);
-      window.GuitarAudio.strum(chord, slot.strumChar);
+    // light + sound: one string per pick, or the whole chord per strum
+    if (!silent && chord) {
+      if (slot.pick) {
+        const s = SongPlayer.resolveString(chord, slot.pick.s);
+        this.fb.lightString(s, 340);
+        window.GuitarAudio.pluck(s, chord.frets[s], 0, 0.5);
+      } else if (slot.strumChar === "D" || slot.strumChar === "U") {
+        this.fb.lightChord(chord, slot.strumChar, 350);
+        window.GuitarAudio.strum(chord, slot.strumChar);
+      }
     }
   }
 
