@@ -106,28 +106,16 @@ Given a song request, produce a simplified beginner arrangement:
     const textBlock = (data.content || []).find((b) => b.type === "text");
     if (!textBlock) throw new Error("Empty response from the AI.");
 
-    const song = JSON.parse(textBlock.text);
-    validate(song);
-    return song;
-  }
-
-  function validate(song) {
-    const expected = song.beatsPerBar * 2;
-    if (song.strum.length !== expected) {
-      // pad or trim rather than fail — the schema constrains chars poorly
-      song.strum = (song.strum + "-".repeat(expected)).slice(0, expected);
-    }
-    song.strum = [...song.strum].map((c) => (c === "D" || c === "U" ? c : "-")).join("");
-    for (const shape of song.chordShapes) {
-      if (shape.frets.length !== 6 || shape.fingers.length !== 6) {
-        throw new Error(`The AI returned a bad shape for chord "${shape.name}" — try requesting again.`);
-      }
-    }
+    // Treat the response as untrusted: sanitize structure, then confirm
+    // every chord in the song has a usable fingering.
+    const song = window.sanitizeSong(JSON.parse(textBlock.text));
+    if (!song) throw new Error("The AI returned an unusable song structure — try requesting again.");
     const known = new Set(song.chordShapes.map((s) => s.name));
     for (const sec of song.sections)
       for (const c of sec.chords)
         if (!known.has(c.chord) && !window.CHORDS[c.chord])
           throw new Error(`No fingering was provided for chord "${c.chord}" — try requesting again.`);
+    return song;
   }
 
   return { requestSong, getKey, setKey };

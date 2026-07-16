@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Lock down where code can run and where data can go. connect-src is the
+       exfiltration guard: even under XSS, fetches can only reach api.anthropic.com. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.anthropic.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'" />
+  <meta name="referrer" content="no-referrer" />
   <title>FretFlow — Guitar Tutor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

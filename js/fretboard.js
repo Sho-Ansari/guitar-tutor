@@ -127,7 +127,9 @@ window.Fretboard = class Fretboard {
     if (fret <= 0) return;
     const x = this.xFor(Math.min(fret, this.frets));
     const y = this.yFor(string);
-    const g = this._el("g", { class: "fb-dot pulse", style: `transform-origin:${x}px ${y}px` }, this.overlay);
+    // transform-origin via CSSOM (a style="" attribute would violate our CSP)
+    const g = this._el("g", { class: "fb-dot pulse" }, this.overlay);
+    g.style.transformOrigin = `${x}px ${y}px`;
     this._el("circle", { cx: x, cy: y, r: 13, fill: color }, g);
     if (finger > 0) {
       const t = this._el("text", { x, y: y + 5, "text-anchor": "middle", fill: "#241703", "font-size": 14, "font-weight": 700, "font-family": "Sora, sans-serif" }, g);

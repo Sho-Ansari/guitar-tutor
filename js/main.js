@@ -409,9 +409,17 @@
   function renderSongs() {
     songList.innerHTML = "";
     window.SONGS.forEach((song) => {
+      // Song fields can come from the AI or localStorage — never innerHTML them
       const card = document.createElement("div");
       card.className = "card";
-      card.innerHTML = `<h3>${song.title}</h3><p>${song.artist}${song.playingNotes ? " — " + song.playingNotes : ""}</p><span class="tag">${song.tag || "song"}</span>`;
+      const h3 = document.createElement("h3");
+      h3.textContent = song.title;
+      const p = document.createElement("p");
+      p.textContent = song.artist + (song.playingNotes ? " — " + song.playingNotes : "");
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = song.tag || "song";
+      card.append(h3, p, tag);
       card.addEventListener("click", () => openSong(song));
       songList.appendChild(card);
     });
@@ -446,12 +454,18 @@
 
   /* API key settings */
   $("#settings-btn").addEventListener("click", () => {
-    $("#api-key-input").value = window.FretFlowAI.getKey();
-    $("#key-status").textContent = window.FretFlowAI.getKey() ? "A key is saved in this browser." : "No key saved yet.";
+    // never echo the saved key back into the DOM
+    $("#api-key-input").value = "";
+    const hasKey = !!window.FretFlowAI.getKey();
+    $("#api-key-input").placeholder = hasKey ? "•••••••• a key is saved — paste to replace" : "sk-ant-...";
+    $("#key-status").textContent = hasKey ? "A key is saved in this browser." : "No key saved yet.";
     openModal("#key-modal");
   });
   $("#key-save").addEventListener("click", () => {
-    window.FretFlowAI.setKey($("#api-key-input").value.trim());
+    const val = $("#api-key-input").value.trim();
+    if (!val) { $("#key-status").textContent = "Paste a key first (or Clear to remove the saved one)."; return; }
+    window.FretFlowAI.setKey(val);
+    $("#api-key-input").value = "";
     $("#key-status").textContent = "Saved ✓";
   });
   $("#key-clear").addEventListener("click", () => {
@@ -481,6 +495,11 @@
     try {
       const song = await window.FretFlowAI.requestSong(query);
       (song.chordShapes || []).forEach(window.registerChord);
+      // registerChord rejects malformed shapes — make sure nothing is left unplayable
+      for (const sec of song.sections)
+        for (const c of sec.chords)
+          if (!window.CHORDS[c.chord])
+            throw new Error(`chord "${c.chord}" came back malformed — try requesting again.`);
       window.SONGS.push(song);
       window.saveAISong(song);
       renderSongs();

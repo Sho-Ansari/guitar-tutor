@@ -32,6 +32,14 @@ Then open http://localhost:3000 (or :8000).
 
 The key is stored only in your browser's localStorage and sent only to `api.anthropic.com`. This direct-from-browser setup is intended for personal use — don't ship a shared deployment with your key baked in.
 
+## Security
+
+The app treats everything that crosses a trust boundary as hostile:
+
+- **Content-Security-Policy** — scripts run only from the app's own origin; network requests can only reach `api.anthropic.com` (so even a hypothetical XSS can't exfiltrate your key elsewhere); no frames, objects, or form posts.
+- **AI responses and localStorage are sanitized** — every song is structurally validated, type-checked, length-capped, and range-clamped (`sanitizeSong`) before use; chord names must match a strict pattern (which also blocks `__proto__`-style prototype pollution); chord shapes are re-validated on registration. Song data is rendered with `textContent`, never `innerHTML`.
+- **API key hygiene** — the key lives only in your browser's localStorage, is sent only to `api.anthropic.com`, and is never echoed back into the page.
+
 ## Tech
 
 Vanilla HTML/CSS/JS — no framework, no bundler.
